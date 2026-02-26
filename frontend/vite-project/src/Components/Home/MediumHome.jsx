@@ -24,14 +24,14 @@ export default function MediumHome() {
   const directionRef = useRef({ dx: 1, dy: 0 });
   const lastDirection = useRef({ dx: 1, dy: 0 });
   const scoreRef = useRef(0);
+  const DEFAULT_SPEED = 120;
   const directionLocked = useRef(false);
   const [score, setScore] = useState(0);
   const [bestScore, setBestScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [gameSpeed, setGameSpeed] = useState(120);
+  const [gameSpeed, setGameSpeed] = useState(DEFAULT_SPEED); 
   const [showRestart, setShowRestart] = useState(false);
-
   // Load best score from localStorage on component mount
   useEffect(() => {
     const savedBestScore = localStorage.getItem('snakeBestScore');
@@ -60,6 +60,7 @@ export default function MediumHome() {
     setIsPlaying(true);
     directionRef.current = { dx: 1, dy: 0 };
     lastDirection.current = { dx: 1, dy: 0 };
+    setGameSpeed(DEFAULT_SPEED);
 
     // Reset snake and food
     snakeRef.current = [{ x: 10, y: 10 }];
@@ -147,6 +148,10 @@ export default function MediumHome() {
       if (head.x === food.x && head.y === food.y) {
         scoreRef.current++;
         setScore(scoreRef.current);
+
+        // Increase speed by 2ms each time an apple is eaten (minimum speed of 50ms)
+        const newSpeed = Math.max(35, 120 - scoreRef.current * 3);
+        setGameSpeed(newSpeed);
         foodRef.current = generateFood(snakeRef.current);
       } else {
         snake.pop();
@@ -280,7 +285,7 @@ export default function MediumHome() {
         </div>
 
         <div className="mt-4 text-center text-gray-400 text-sm">
-          Use arrow keys to control the snake
+          Use arrow keys to control the snake • Speed increases with each apple (+2ms)
         </div>
       </div>
     </div>

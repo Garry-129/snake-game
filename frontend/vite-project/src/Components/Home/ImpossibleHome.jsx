@@ -20,6 +20,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 export default function ImpossibleHome() {
   const canvasRef = useRef(null);
   const snakeRef = useRef([]);
+  const DEFAULT_SPEED = 120;
   const foodRef = useRef({ x: 15, y: 10 });
   const directionRef = useRef({ dx: 1, dy: 0 });
   const lastDirection = useRef({ dx: 1, dy: 0 });
@@ -29,7 +30,7 @@ export default function ImpossibleHome() {
   const [bestScore, setBestScore] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [gameOver, setGameOver] = useState(false);
-  const [gameSpeed, setGameSpeed] = useState(120);
+  const [gameSpeed, setGameSpeed] = useState(DEFAULT_SPEED);
   const [showRestart, setShowRestart] = useState(false);
 
   // Load best score from localStorage on component mount
@@ -57,13 +58,18 @@ export default function ImpossibleHome() {
     scoreRef.current = 0;
     setGameOver(false);
     setShowRestart(false);
-    setIsPlaying(true);
+
+    // 🔥 SPEED RESET (important)
+    setGameSpeed(DEFAULT_SPEED);
+
     directionRef.current = { dx: 1, dy: 0 };
     lastDirection.current = { dx: 1, dy: 0 };
+    directionLocked.current = false;
 
-    // Reset snake and food
     snakeRef.current = [{ x: 10, y: 10 }];
     foodRef.current = generateFood(snakeRef.current);
+
+    setIsPlaying(true);
   }, []);
 
   const generateFood = (snake) => {
@@ -147,6 +153,14 @@ export default function ImpossibleHome() {
       if (head.x === food.x && head.y === food.y) {
         scoreRef.current++;
         setScore(scoreRef.current);
+
+        // 💀 IMPOSSIBLE MODE SPEED (2,4,8,16...)
+        const baseSpeed = 120;
+        const reduction = Math.pow(2, scoreRef.current) / 2;
+        const newSpeed = Math.max(12, baseSpeed - reduction);
+
+        setGameSpeed(newSpeed);
+
         foodRef.current = generateFood(snakeRef.current);
       } else {
         snake.pop();

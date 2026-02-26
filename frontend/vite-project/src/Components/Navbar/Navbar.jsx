@@ -10,7 +10,7 @@ export default function Navbar({ currentDifficulty, onDifficultyChange, onScoreb
     { name: "Easy", color: "#4caf50", path: "/" },
     { name: "Medium", color: "#ff9800", path: "/medium" },
     { name: "Hard", color: "#f44336", path: "/hard" },
-    { name: "Impossible", color: "#9c27b0", path: "/impossible" }
+    { name: "Troll", color: "#9c27b0", path: "/impossible" }
   ];
 
   // Handle click outside

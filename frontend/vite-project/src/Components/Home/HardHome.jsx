@@ -57,13 +57,18 @@ export default function HardHome() {
     scoreRef.current = 0;
     setGameOver(false);
     setShowRestart(false);
-    setIsPlaying(true);
+
+    // 🔥 SPEED RESET (important)
+    setGameSpeed(120);
+
     directionRef.current = { dx: 1, dy: 0 };
     lastDirection.current = { dx: 1, dy: 0 };
+    directionLocked.current = false;
 
-    // Reset snake and food
     snakeRef.current = [{ x: 10, y: 10 }];
     foodRef.current = generateFood(snakeRef.current);
+
+    setIsPlaying(true);
   }, []);
 
   const generateFood = (snake) => {
@@ -147,6 +152,14 @@ export default function HardHome() {
       if (head.x === food.x && head.y === food.y) {
         scoreRef.current++;
         setScore(scoreRef.current);
+
+        // HARD MODE SPEED LOGIC 🚀
+        const baseSpeed = 120;          // starting delay
+        const reduction = scoreRef.current * 3;  // 3,6,9,12,15...
+        const newSpeed = Math.max(25, baseSpeed - reduction);
+
+        setGameSpeed(newSpeed);
+
         foodRef.current = generateFood(snakeRef.current);
       } else {
         snake.pop();
