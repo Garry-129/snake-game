@@ -18,6 +18,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 export default function HardHome() {
+  const BEST_SCORE_KEY = "snakeBestScore_hard";
   const canvasRef = useRef(null);
   const snakeRef = useRef([]);
   const foodRef = useRef({ x: 15, y: 10 });
@@ -34,7 +35,7 @@ export default function HardHome() {
 
   // Load best score from localStorage on component mount
   useEffect(() => {
-    const savedBestScore = localStorage.getItem('snakeBestScore');
+    const savedBestScore = localStorage.getItem(BEST_SCORE_KEY);
     if (savedBestScore) {
       setBestScore(parseInt(savedBestScore));
     }
@@ -48,7 +49,7 @@ export default function HardHome() {
     // Update best score if current score is higher
     if (scoreRef.current > bestScore) {
       setBestScore(scoreRef.current);
-      localStorage.setItem('snakeBestScore', scoreRef.current.toString());
+      localStorage.setItem(BEST_SCORE_KEY, scoreRef.current.toString());
     }
   }, [bestScore]);
 
@@ -63,7 +64,6 @@ export default function HardHome() {
 
     directionRef.current = { dx: 1, dy: 0 };
     lastDirection.current = { dx: 1, dy: 0 };
-    directionLocked.current = false;
 
     snakeRef.current = [{ x: 10, y: 10 }];
     foodRef.current = generateFood(snakeRef.current);
@@ -200,6 +200,7 @@ export default function HardHome() {
 
         directionLocked.current = false;
       });
+      directionLocked.current = false;
 
       // Draw apple with leaf and shadow
       const appleX = foodRef.current.x * gridSize;

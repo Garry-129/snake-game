@@ -18,6 +18,7 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 export default function ImpossibleHome() {
+  const BEST_SCORE_KEY = "snakeBestScore_impossible";
   const canvasRef = useRef(null);
   const snakeRef = useRef([]);
   const DEFAULT_SPEED = 120;
@@ -35,7 +36,7 @@ export default function ImpossibleHome() {
 
   // Load best score from localStorage on component mount
   useEffect(() => {
-    const savedBestScore = localStorage.getItem('snakeBestScore');
+    const savedBestScore = localStorage.getItem(BEST_SCORE_KEY);
     if (savedBestScore) {
       setBestScore(parseInt(savedBestScore));
     }
@@ -49,7 +50,7 @@ export default function ImpossibleHome() {
     // Update best score if current score is higher
     if (scoreRef.current > bestScore) {
       setBestScore(scoreRef.current);
-      localStorage.setItem('snakeBestScore', scoreRef.current.toString());
+      localStorage.setItem(BEST_SCORE_KEY, scoreRef.current.toString());
     }
   }, [bestScore]);
 
@@ -199,8 +200,8 @@ export default function ImpossibleHome() {
         ctx.roundRect(x + 1, y + 1, gridSize - 2, gridSize - 2, 6);
         ctx.fill();
 
-        directionLocked.current = false;
       });
+      directionLocked.current = false;
 
       // Draw apple with leaf and shadow
       const appleX = foodRef.current.x * gridSize;
