@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import { APIURL } from "../../GlobalAPIURL";
 
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
@@ -31,26 +32,127 @@ export default function Home() {
   const [gameOver, setGameOver] = useState(false);
   const [gameSpeed, setGameSpeed] = useState(120);
   const [showRestart, setShowRestart] = useState(false);
+  
+  // Player info states
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [playerName, setPlayerName] = useState("");
+  const [playerCountry, setPlayerCountry] = useState("");
+  const [pendingScore, setPendingScore] = useState(null);
+  const [scoreSubmitted, setScoreSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load best score from localStorage on component mount
-  useEffect(() => {
-    const savedBestScore = localStorage.getItem('snakeBestScore');
-    if (savedBestScore) {
-      setBestScore(parseInt(savedBestScore));
+  // Check if player already exists in backend
+  const checkAndSubmitScore = useCallback(async (scoreValue) => {
+    // First check localStorage for saved player info
+    const savedName = localStorage.getItem('playerName');
+    const savedCountry = localStorage.getItem('playerCountry');
+    
+    if (savedName && savedCountry) {
+      // Try to submit with saved info
+      setIsSubmitting(true);
+      try {
+        const response = await fetch(`${APIURL}/submit_score`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: savedName,
+            country: savedCountry,
+            score: scoreValue,
+            level: "easy"
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          setScoreSubmitted(true);
+          setTimeout(() => setScoreSubmitted(false), 3000);
+          console.log("High score submitted successfully!");
+        } else {
+          // If backend says player doesn't exist or error, clear localStorage and ask again
+          if (data.message === "All fields required" || data.message.includes("player")) {
+            localStorage.removeItem('playerName');
+            localStorage.removeItem('playerCountry');
+            setPendingScore(scoreValue);
+            setShowPlayerModal(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error submitting score:", error);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // No saved info, ask for it
+      setPendingScore(scoreValue);
+      setShowPlayerModal(true);
     }
   }, []);
 
   const endGame = useCallback(() => {
+    const finalScore = scoreRef.current;
     setGameOver(true);
     setIsPlaying(false);
     setShowRestart(true);
 
     // Update best score if current score is higher
-    if (scoreRef.current > bestScore) {
-      setBestScore(scoreRef.current);
-      localStorage.setItem('snakeBestScore', scoreRef.current.toString());
+    if (finalScore > bestScore) {
+      setBestScore(finalScore);
+      localStorage.setItem('snakeBestScore', finalScore.toString());
     }
-  }, [bestScore]);
+
+    // Submit high score only if score > 0
+    if (finalScore > 0) {
+      checkAndSubmitScore(finalScore);
+    }
+  }, [bestScore, checkAndSubmitScore]);
+
+  const handlePlayerInfoSubmit = async () => {
+    if (playerName.trim() && playerCountry.trim()) {
+      setIsSubmitting(true);
+      
+      try {
+        const response = await fetch(`${APIURL}/submit_score`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: playerName.trim(),
+            country: playerCountry.trim(),
+            score: pendingScore,
+            level: "easy"
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Save to localStorage only if submission successful
+          localStorage.setItem('playerName', playerName.trim());
+          localStorage.setItem('playerCountry', playerCountry.trim());
+          
+          setScoreSubmitted(true);
+          setTimeout(() => setScoreSubmitted(false), 3000);
+          console.log("High score submitted successfully!");
+        } else {
+          console.log("Failed to submit score:", data.message);
+          alert(`Failed to submit score: ${data.message}`);
+        }
+      } catch (error) {
+        console.error("Error submitting score:", error);
+        alert("Network error while submitting score");
+      } finally {
+        setIsSubmitting(false);
+        setShowPlayerModal(false);
+        setPlayerName("");
+        setPlayerCountry("");
+        setPendingScore(null);
+      }
+    }
+  };
 
   const restartGame = useCallback(() => {
     setScore(0);
@@ -84,7 +186,7 @@ export default function Home() {
       e.preventDefault();
     }
 
-    if (directionLocked.current) return;   // 🔒 only one turn per frame
+    if (directionLocked.current) return;
 
     const { dx, dy } = lastDirection.current;
 
@@ -102,7 +204,7 @@ export default function Home() {
     }
 
     lastDirection.current = directionRef.current;
-    directionLocked.current = true;   // 🔐 lock after first key
+    directionLocked.current = true;
   }, [isPlaying]);
 
   useEffect(() => {
@@ -160,9 +262,7 @@ export default function Home() {
         const x = part.x * gridSize;
         const y = part.y * gridSize;
 
-        // Gradient for snake body
         if (index === 0) {
-          // Head with gradient
           const gradient = ctx.createRadialGradient(
             x + gridSize / 2, y + gridSize / 2, 2,
             x + gridSize / 2, y + gridSize / 2, gridSize / 2
@@ -171,7 +271,6 @@ export default function Home() {
           gradient.addColorStop(1, "#7fb300");
           ctx.fillStyle = gradient;
         } else {
-          // Body with gradient
           const gradient = ctx.createRadialGradient(
             x + gridSize / 2, y + gridSize / 2, 2,
             x + gridSize / 2, y + gridSize / 2, gridSize / 2
@@ -188,17 +287,15 @@ export default function Home() {
         directionLocked.current = false;
       });
 
-      // Draw apple with leaf and shadow
+      // Draw apple
       const appleX = foodRef.current.x * gridSize;
       const appleY = foodRef.current.y * gridSize;
 
-      // Apple shadow
       ctx.fillStyle = "rgba(0,0,0,0.3)";
       ctx.beginPath();
       ctx.ellipse(appleX + gridSize / 2, appleY + gridSize - 2, gridSize / 3, gridSize / 6, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Apple body
       const appleGradient = ctx.createRadialGradient(
         appleX + gridSize / 3, appleY + gridSize / 3, 2,
         appleX + gridSize / 2, appleY + gridSize / 2, gridSize / 2
@@ -210,11 +307,9 @@ export default function Home() {
       ctx.ellipse(appleX + gridSize / 2, appleY + gridSize / 2, gridSize / 2.5, gridSize / 2.2, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Apple stem
       ctx.fillStyle = "#8B4513";
       ctx.fillRect(appleX + gridSize / 2 - 2, appleY + 2, 4, gridSize / 4);
 
-      // Apple leaf
       ctx.fillStyle = "#00aa00";
       ctx.beginPath();
       ctx.ellipse(appleX + gridSize / 2 + 4, appleY + 4, 3, 5, -0.2, 0, Math.PI * 2);
@@ -242,6 +337,20 @@ export default function Home() {
             <p className="text-3xl font-bold text-yellow-400">{bestScore}</p>
           </div>
         </div>
+
+        {/* Score submitted notification */}
+        {scoreSubmitted && (
+          <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-bounce z-50">
+            🏆 High Score Submitted!
+          </div>
+        )}
+
+        {/* Submitting indicator */}
+        {isSubmitting && (
+          <div className="fixed top-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+            ⏳ Submitting score...
+          </div>
+        )}
 
         <div className="relative">
           <canvas
@@ -283,6 +392,73 @@ export default function Home() {
           Use arrow keys to control the snake
         </div>
       </div>
+
+      {/* Player Info Modal - Only shows once */}
+      {showPlayerModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-800 rounded-2xl p-6 max-w-md w-full border border-gray-700 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-4 text-center text-green-400">
+              🏆 High Score!
+            </h2>
+            <p className="text-center mb-4">
+              You scored <span className="text-yellow-400 font-bold text-xl">{pendingScore}</span> points!
+            </p>
+            <p className="text-center mb-6 text-gray-300">
+              Enter your details to save your high score:
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="Enter your name"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 text-white"
+                  maxLength={20}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-300">
+                  Country *
+                </label>
+                <input
+                  type="text"
+                  value={playerCountry}
+                  onChange={(e) => setPlayerCountry(e.target.value.toUpperCase())}
+                  placeholder="Enter your country"
+                  className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:border-green-500 text-white uppercase"
+                  maxLength={50}
+                />
+              </div>
+              
+              <button
+                onClick={handlePlayerInfoSubmit}
+                disabled={!playerName.trim() || !playerCountry.trim() || isSubmitting}
+                className="w-full mt-6 px-6 py-3 bg-linear-to-r from-green-500 to-green-600 rounded-xl font-bold hover:from-green-600 hover:to-green-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Submitting..." : "Save High Score"}
+              </button>
+              
+              <button
+                onClick={() => {
+                  setShowPlayerModal(false);
+                  setPlayerName("");
+                  setPlayerCountry("");
+                  setPendingScore(null);
+                }}
+                className="w-full mt-2 px-6 py-2 bg-gray-700 rounded-xl font-bold hover:bg-gray-600 transition-all duration-200"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
