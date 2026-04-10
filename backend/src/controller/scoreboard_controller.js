@@ -2,7 +2,7 @@
 import { Player } from "../model/player_model.js";
 import { Score } from "../model/scoreboard_model.js";
 
-// 🟢 Submit Score (best score per player per level)
+
 export const submitScore = async (req, res) => {
   try {
     const { name, country, score, level } = req.body;
